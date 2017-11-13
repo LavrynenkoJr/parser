@@ -1,10 +1,7 @@
 package com.cyborg.sportparser.parser;
 
 
-import com.cyborg.sportparser.model.Composition;
-import com.cyborg.sportparser.model.Description;
-import com.cyborg.sportparser.model.Header;
-import com.cyborg.sportparser.model.Parameter;
+import com.cyborg.sportparser.model.*;
 import com.cyborg.sportparser.repository.ProductRepository;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -36,25 +33,54 @@ public class BCAAParser {
 
        /* Document document = Jsoup.connect("https://bcaa.ua/proteini/muscle_tech_100_whey_plus_907_gramm#assortment_shokolad").get();
 
-        Product product = new Product(getProductName(document), getProductDescription(document));
+        productRepository.deleteAll();
+
+        Product product = new Product(getProductName(document), getProductDescription(document), getProductImage(document));
         System.out.println(product.toString());
+        productRepository.save(product);*/
 
-
-        List<Product> products = productRepository.findAll();
-        products.forEach(product1 -> {
-            System.out.println(" Name = " + product1.getName());
-            System.out.println(" Brand = " + product1.getDescription().getHeader().getHeaderTable().toString());
-        });*/
-
+       productRepository.deleteAll();
 
         List<String> allCategoryLinks = new ArrayList<>();
         allCategoryLinks.add("https://bcaa.ua/proteini");
 
 
-
         List<String> allProductLinks = getAllProductLinks(allCategoryLinks).stream().collect(Collectors.toList());
         System.out.println(" FINISHED " + " all products count = " + allProductLinks.size());
 
+        parseAndSave(allProductLinks);
+
+    }
+
+    private void parseAndSave(List<String> productLinks) {
+
+        System.out.println("-=Parsing each product=-");
+        System.out.println("all products = " + productLinks.size());
+
+        for (int i = 0; i < productLinks.size(); i++) {
+
+            System.out.println("N = " + i);
+
+            Document document = null;
+            try {
+                document = Jsoup.connect(productLinks.get(i)).get();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            if (document !=null) {
+                Product product = new Product(getProductName(document), getProductDescription(document), getProductImage(document));
+                productRepository.save(product);
+                System.out.println("saving N = " + i);
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        System.out.println("DONE");
     }
 
     private static Set<String> getAllProductLinks(List<String> allCategoryLinks) throws IOException {
@@ -71,11 +97,6 @@ public class BCAAParser {
                 productsFromPage = getDocumentByLink(categoryLink + "/" + i);
 
                 Set<String> linkToProducts = getProductLinks(productsFromPage);
-
-                linkToProducts.forEach(s -> {
-                    System.out.println("=========== " + s);
-                });
-
                 allProductLinks.addAll(linkToProducts);
 
             }
@@ -127,6 +148,20 @@ public class BCAAParser {
                 .html();
     }
 
+    private String getProductBrand(Document document) {
+        return BASE_URL + document
+                .select("div.image")
+                .select("img")
+                .attr("src");
+    }
+
+    private String getProductImage(Document document) {
+        return BASE_URL + document
+                .select("div.image")
+                .select("img")
+                .attr("src");
+    }
+
     private Description getProductDescription(Document document) {
 
         String header = String.valueOf(document.select("div.product-content").select("h4").html());
@@ -149,7 +184,7 @@ public class BCAAParser {
         List<String> elementList = elementsComposition.stream().map(Element::html).collect(Collectors.toList());
 
         Set<Parameter> parameters = new HashSet<>();
-        for (int i = 0; i < elementList.size(); i += 2) {
+        for (int i = 0; i < (elementList.size()-2); i += 2) {
             if (elementList.get(i+1).startsWith("<a href=")) {
                 String string = elementList.get(i+1).replaceAll(".*\">", "");
                 string = string.replace("</a>","");

@@ -16,9 +16,13 @@ public class Product {
     private String name;
     private Description description;
 
+    private String brand;
+    private String image;
 
-    public Product(String name, Description description) {
+
+    public Product(String name, Description description, String image) {
         this.name = name;
         this.description = description;
+        this.image = image;
     }
 }
